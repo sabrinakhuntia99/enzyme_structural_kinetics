@@ -4,9 +4,10 @@ import pandas as pd
 import numpy as np
 import os
 import re
-
 from util_func import conv_array_text, extract_backbone_atoms
+from calc_functions import calculate_density, calculate_radius_of_gyration, calculate_surface_area_to_volume_ratio, calculate_sphericity, calculate_euler_characteristic, calculate_inradius, calculate_circumradius, calculate_hydrodynamic_radius
 from tqdm import tqdm
+import matplotlib.pyplot as plt
 
 parse = PDBParser()
 # Atomic masses in Dalton (g/mol)
@@ -31,49 +32,13 @@ disorder_properties = {
     'Radius_of_Gyration': np.zeros(num_proteins),
     'Surface_Area_to_Volume_Ratio': np.zeros(num_proteins),
     'Sphericity': np.zeros(num_proteins),
-    'CPI': np.zeros(num_proteins)
+    'CPI': np.zeros(num_proteins),
+    'Euler_Characteristic': np.zeros(num_proteins),
+    'Inradius': np.zeros(num_proteins),
+    'Circumradius': np.zeros(num_proteins),
+    'Hydrodynamic_Radius': np.zeros(num_proteins)
 }
 
-def calculate_density(structure):
-    atoms = list(structure.get_atoms())
-    total_mass = sum(atomic_masses.get(atom.element, 0) for atom in atoms)
-
-    # Calculate volume (assuming structure is dense)
-    volume = len(atoms) * 1e-24  # in cubic Angstroms
-
-    # Convert volume to cubic centimeters (1 Å³ = 1e-24 cm³)
-    volume_cm3 = volume * 1e-24
-
-    # Convert mass from Daltons to grams (1 Da = 1.66054e-24 g)
-    mass_g = total_mass * 1.66054e-24
-
-    # Calculate density in g/cm³
-    density = mass_g / volume_cm3
-    return density
-
-def calculate_radius_of_gyration(structure):
-    atoms_coords = np.array([atom.coord for atom in structure.get_atoms()])
-    center_of_mass = np.mean(atoms_coords, axis=0)
-    distances = np.linalg.norm(atoms_coords - center_of_mass, axis=1)
-    radius_of_gyration = np.sqrt(np.mean(distances**2))
-    return radius_of_gyration
-
-def calculate_surface_area_to_volume_ratio(structure):
-    atoms_coords = [atom.coord for atom in structure.get_atoms()]
-    # Assuming surface area is approximately the same as the number of atoms
-    surface_area = len(atoms_coords)
-    # Assuming volume is approximately the same as the number of atoms
-    volume = len(atoms_coords)
-    return surface_area / volume
-
-def calculate_sphericity(structure):
-    atoms_coords = [atom.coord for atom in structure.get_atoms()]
-    # Assuming volume is approximately the same as the number of atoms
-    volume = len(atoms_coords)
-    # Assuming surface area is approximately the same as the number of atoms
-    surface_area = len(atoms_coords)
-    equivalent_radius = (3 * volume / (4 * np.pi))**(1/3)
-    return (np.pi**(1/3)) * ((6 * equivalent_radius)**(2/3)) / surface_area
 
 def get_pdb_file_paths(folder_path):
     pdb_paths = {}
@@ -123,6 +88,13 @@ for idx, uniprot_id in enumerate(data_df.index):
         disorder_properties['Surface_Area_to_Volume_Ratio'][idx] = calculate_surface_area_to_volume_ratio(structure)
         disorder_properties['Sphericity'][idx] = calculate_sphericity(structure)
 
+        disorder_properties['Euler_Characteristic'][idx] = calculate_euler_characteristic(structure)
+        disorder_properties['Inradius'][idx] = calculate_inradius(structure)
+        disorder_properties['Circumradius'][idx] = calculate_circumradius(structure)
+        disorder_properties['Hydrodynamic_Radius'][idx] = calculate_hydrodynamic_radius(structure)
+
+
+
         # Calculate centroid of the protein structure
         points = extract_backbone_atoms(structure)
         centroid = np.mean(points, axis=0)
@@ -144,4 +116,10 @@ for idx, uniprot_id in enumerate(data_df.index):
 
 # Convert disorder_properties dictionary to DataFrame
 disorder_properties_df = pd.DataFrame(disorder_properties)
-print(disorder_properties_df)
+
+# Calculate correlation between CPI and each property
+correlations = disorder_properties_df.corr()['CPI']
+
+print("Correlation between CPI and each property:")
+print(correlations)
+
