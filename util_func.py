@@ -50,12 +50,3 @@ def conv_array_coord(data):
                 coordinates_list.append({'TimePoint': key, 'X': value[0], 'Y': value[1], 'Z': value[2]})
     return coordinates_list
 
-# Amino Acid Hydrophobicity Scale (Kyte-Doolittle scale)
-hydrophobicity_values = {
-    'A': 1.8, 'R': -4.5, 'N': -3.5, 'D': -3.5, 'C': 2.5,
-    'Q': -3.5, 'E': -3.5, 'G': -0.4, 'H': -3.2, 'I': 4.5,
-    'L': 3.8, 'K': -3.9, 'M': 1.9, 'F': 2.8, 'P': -1.6,
-    'S': -0.8, 'T': -0.7, 'W': -0.9, 'Y': -1.3, 'V': 4.2,
-    'O': 0.0, # not in this sequence
-    'U': 0.0 # not in this sequence
-}
