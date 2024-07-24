@@ -4,7 +4,7 @@
 
 ## 1. Quantify enzymatic cleavage pattern at the proteome level.
 ### A. Pre-process data.
-### B. Apply linear regression.
+### B. Apply linear regression encompassing all time points for each protein.
 ### C. Evaluate goodness of fit.
 ### D. Determine slope.
 
