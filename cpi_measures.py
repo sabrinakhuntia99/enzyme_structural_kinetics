@@ -122,4 +122,5 @@ correlations = disorder_properties_df.corr()['CPI']
 
 print("Correlation between CPI and each property:")
 print(correlations)
+# Add full matrix
 
