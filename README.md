@@ -33,6 +33,7 @@ category of image by learning hierarchical features through convolutional layers
 
 ## 4. Develop machine learning model to estimate disorder content of sample proteins.
 ### A. For initial training, use DisProt database (experimentally determined) and add columns with calculated metrics (listed above).
+https://colab.research.google.com/drive/1QYop8mva16TeJKM2qusVRxXAQvrbkL6b?usp=sharing#scrollTo=PspT1Qv8PZ_6
 ### B. Apply ML model to lab experimental data.
 
 ## 5. Determine correlation between structural measures, disorder content, and cleavage pattern.
