@@ -6,7 +6,7 @@
 ### A. Pre-process data.
 ### B. Apply linear regression encompassing all time points for each protein.
 ### C. Evaluate goodness of fit.
-### D. Determine slope.
+### D. Determine slope from time=0 to first turning point.
 
 ## 3. Calculate potential metrics of fragmentation using the Cartesian coordinates of AlphaFold-predicted molecular structures.
 ### A. sequence length
