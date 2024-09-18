@@ -11,6 +11,8 @@
 ## 3. Calculate potential metrics of fragmentation using the Cartesian coordinates of AlphaFold-predicted molecular structures.
 ### A. sequence length
 total number of amino acids in the protein
+### B. 	hydrophobicity_full
+sum min max average based on kyle-doolitte scale
 ### B. density
 compactness
 ### C. radius of gyration
