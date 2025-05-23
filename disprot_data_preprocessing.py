@@ -2,26 +2,24 @@ import numpy as np
 import pandas as pd
 import ast  # Library for literal_eval function
 
-
 # Read the TSV file
-df = pd.read_csv("processed_disprot_new.tsv", sep="\t")
+df = pd.read_csv(r"C:\Users\Sabrina\Documents\GitHub\protein_structural_kinetics\data\disprot_with_measures.tsv", sep="\t")
 
-# Define a function to calculate min, max, sum, and average of an array
-def calculate_stats(arr):
-    return np.min(arr), np.max(arr), np.sum(arr), np.mean(arr)
+# Drop the specified columns
+df = df.drop(columns=['uniprot_id', 'euler_characteristic'])
 
+# Function to convert string representation of lists to actual lists
+def convert_to_list(string):
+    try:
+        # Safely evaluate the string representation of the list
+        return ast.literal_eval(string)
+    except (ValueError, SyntaxError):
+        return []  # Return an empty list if conversion fails
 
-# Convert string representations of arrays into actual arrays of numerical values
-df['hydrophobicity_full'] = df['hydrophobicity_full'].apply(lambda x: np.array(ast.literal_eval(x)))
-df['hydrophobicity_region'] = df['hydrophobicity_region'].apply(lambda x: np.array(ast.literal_eval(x)))
-
-# Apply the operation to hydrophobicity_full column
-df['hydrophobicity_full'] = df['hydrophobicity_full'].apply(lambda arr: np.array(calculate_stats(arr)))
-
-# Apply the operation to hydrophobicity_region column
-df['hydrophobicity_region'] = df['hydrophobicity_region'].apply(lambda arr: np.array(calculate_stats(arr)))
+# Apply the conversion function to the hydrophobicity_full column
+df['hydrophobicity_full'] = df['hydrophobicity_full'].apply(convert_to_list)
 
 # Write the modified DataFrame to a new TSV file
-df.to_csv("disorder_data_60324.tsv", sep="\t", index=False)
+df.to_csv(r"C:\Users\Sabrina\Documents\GitHub\protein_structural_kinetics\data\disprot_data_with_measures_for_model.tsv", sep="\t", index=False)
 
-print("File 'disorder_data_60324.tsv' has been created.")
+print("File has been created.")

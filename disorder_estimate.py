@@ -2,66 +2,113 @@ import numpy as np
 import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.tree import DecisionTreeRegressor
+from sklearn.metrics import r2_score, mean_squared_error
 from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
+import matplotlib.pyplot as plt
+import seaborn as sns
 
-# Load your original dataset (df) used for training
-data_path = 'updated_disorder_data_060324.tsv'
-df = pd.read_csv(data_path, sep='\t')
+# Paths for datasets
+pdb_data_path = r"C:\Users\Sabrina\Documents\GitHub\protein_structural_kinetics\data\disprot_data_pdb.tsv"
+af_data_path = r"C:\Users\Sabrina\Documents\GitHub\protein_structural_kinetics\data\disprot_data_with_measures_for_model.tsv"
 
-# Define a function to convert 'hydrophobicity_full' to a list of floats
-def convert_to_float_list(x):
-    try:
-        return [float(item) for item in x.strip('[]').split()]
-    except ValueError:
-        return None  # Handle cases where conversion fails
+# Load both datasets
+pdb_df = pd.read_csv(pdb_data_path, sep='\t')
+af_df = pd.read_csv(af_data_path, sep='\t')
 
-# Convert 'hydrophobicity_full' column in df
-df['hydrophobicity_full'] = df['hydrophobicity_full'].apply(convert_to_float_list)
+# Drop unnecessary columns
+drop_columns = ['uniprot_id', 'hydrophobicity_full', 'euler_characteristic']
+pdb_df.drop(columns=drop_columns, inplace=True)
 
-# Drop 'hydrophobicity_full' column from df
-df.drop(columns=['hydrophobicity_full'], inplace=True)
+# Plotting distribution of disorder content for both datasets
+plt.figure(figsize=(14, 6))
 
-# Separate features (x) and output (y) from the original dataset (df)
-x = df.drop(columns=['disorder_content'])
-y = df['disorder_content']
+# PDB dataset plot
+plt.subplot(1, 2, 1)
+sns.histplot(pdb_df['disorder_content'], bins=30, kde=True)
+plt.title('Distribution of Disorder Content (PDB)')
+plt.xlabel('Disorder Content')
+plt.ylabel('Frequency')
+plt.tight_layout()
 
-# Split data into training and testing sets (not necessary for prediction on exp_data)
-# x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.2, random_state=42)
+# AlphaFold dataset plot
+plt.subplot(1, 2, 2)
+sns.histplot(af_df['disorder_content'], bins=30, kde=True)
+plt.title('Distribution of Disorder Content (AlphaFold)')
+plt.xlabel('Disorder Content')
+plt.ylabel('Frequency')
+plt.tight_layout()
 
-# DECISION TREE REGRESSOR
-regressor1 = DecisionTreeRegressor(max_depth=14)
-regressor1.fit(x, y)
+plt.show()
 
-# RANDOM FOREST REGRESSOR
-regressor2 = RandomForestRegressor(n_estimators=150, max_depth=20)
-regressor2.fit(x, y)
+# Separating the features (x) from the output: disorder_content (y) for both datasets
+pdb_x = pdb_df.iloc[:, :-1]
+pdb_y = pdb_df.iloc[:, -1]
 
-# GRADIENT BOOSTING REGRESSOR
-regressor3 = GradientBoostingRegressor(n_estimators=150, max_depth=9, learning_rate=0.1)
-regressor3.fit(x, y)
+af_x = af_df.iloc[:, :-1]
+af_y = af_df.iloc[:, -1]
 
-# Now load and preprocess the new dataset (exp_data)
-exp_data_path = 'pep_cleave_measures.tsv'
-exp_data = pd.read_csv(exp_data_path, sep='\t')
+# Function to train Gradient Boosting Regressor and evaluate the model
+def train_and_evaluate_gb_model(x, y, dataset_name="Dataset"):
+    x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.2, random_state=42)
+    regressor = GradientBoostingRegressor(n_estimators=150, max_depth=9, learning_rate=0.1)
+    regressor.fit(x_train, y_train)
+    y_pred = regressor.predict(x_test)
+    print(f"{dataset_name} Gradient Boosting:")
+    print("R^2 Score:", r2_score(y_test, y_pred))
+    print("Mean Squared Error:", mean_squared_error(y_test, y_pred))
+    return regressor
 
-# Convert 'hydrophobicity_full' column in exp_data
-exp_data['hydrophobicity_full'] = exp_data['hydrophobicity_full'].apply(convert_to_float_list)
+# Train and evaluate models for both datasets
+pdb_gb_model = train_and_evaluate_gb_model(pdb_x, pdb_y, "PDB")
+af_gb_model = train_and_evaluate_gb_model(af_x, af_y, "AlphaFold")
 
-# Drop 'hydrophobicity_full' column from exp_data (if present)
-exp_data.drop(columns=['hydrophobicity_full'], inplace=True, errors='ignore')
+# Function to evaluate model with a dropped column
+def evaluate_model_with_dropped_column(df, y, column_to_drop):
+    df_modified = df.drop(columns=[column_to_drop])
+    x_train, x_test, y_train, y_test = train_test_split(df_modified, y, test_size=0.2, random_state=42)
+    regressor = GradientBoostingRegressor(n_estimators=150, max_depth=9, learning_rate=0.1)
+    regressor.fit(x_train, y_train)
+    y_pred = regressor.predict(x_test)
+    return r2_score(y_test, y_pred)
 
-# Use the trained models to predict 'disorder_content' in exp_data
-y_pred1 = regressor1.predict(exp_data)
-y_pred2 = regressor2.predict(exp_data)
-y_pred3 = regressor3.predict(exp_data)
+# Evaluate each feature for both datasets
+def evaluate_features(df, y, dataset_name="Dataset"):
+    results = {}
+    for column in df.columns:
+        r2_score_dropped = evaluate_model_with_dropped_column(df, y, column)
+        results[column] = r2_score_dropped
+        print(f"R^2 Score of GB model ({dataset_name}) after dropping '{column}': {r2_score_dropped:.4f}")
+    return results
 
-exp_data['Predicted_Disorder_Content_DT'] = y_pred1
-exp_data['Predicted_Disorder_Content_RF'] = y_pred2
-exp_data['Predicted_Disorder_Content_GB'] = y_pred3
+# Get R² scores for feature evaluation
+pdb_results = evaluate_features(pdb_x, pdb_y, "PDB")
+af_results = evaluate_features(af_x, af_y, "AlphaFold")
 
+# Visualization of R² Scores when dropping each feature for both datasets
+# Convert the results dictionaries to DataFrames
+pdb_results_df = pd.DataFrame(list(pdb_results.items()), columns=['Feature', 'PDB'])
+af_results_df = pd.DataFrame(list(af_results.items()), columns=['Feature', 'AlphaFold'])
 
+# Merge the two DataFrames for side-by-side comparison
+comparison_df = pd.merge(pdb_results_df, af_results_df, on='Feature')
 
-# Save the predicted data to a new TSV file
-exp_data.to_csv('predicted_disorder_content.tsv', sep='\t', index=False)
+# Plot the R² scores as a grouped vertical bar chart
+plt.figure(figsize=(16, 10))
+comparison_df_melted = pd.melt(comparison_df, id_vars=['Feature'], value_vars=['PDB', 'AlphaFold'],
+                               var_name='Dataset', value_name='R² Score')
 
-print("Predictions saved to predicted_disorder_content.tsv")
+# Define custom colors for each dataset
+palette = {'PDB': 'green', 'AlphaFold': 'purple'}
+
+# Use sns.barplot with vertical orientation and custom colors
+sns.barplot(x='Feature', y='R² Score', hue='Dataset', data=comparison_df_melted, palette=palette)
+plt.title('Impact of Feature Removal on R² Scores (Gradient Boosting Model): PDB vs. AlphaFold', fontsize=16)
+plt.xlabel('Structural Feature', fontsize=14)
+plt.ylabel('R² Score', fontsize=14)
+plt.xticks(rotation=45, ha='right')  # Rotate feature labels for better readability
+plt.legend(title='Structures')
+plt.tight_layout()
+
+# Save the plot as an image file
+plt.savefig('comparison_feature_importance_r2_scores_vertical.png', dpi=300)
+plt.show()

@@ -1,16 +1,7 @@
-import csv
-import os
-import gzip
 import numpy as np
-import requests
-import pandas as pd
-from Bio.PDB import PDBParser
 from scipy.spatial import ConvexHull, distance
 from Bio.SeqUtils import IsoelectricPoint
 import ast  # Library for literal_eval function
-from scipy.interpolate import lagrange
-from sklearn.metrics import mean_squared_error
-from scipy.interpolate import CubicSpline
 
 # Atomic masses in Dalton (g/mol)
 atomic_masses = {
@@ -45,10 +36,19 @@ def calculate_density(structure):
     return density
 
 def calculate_radius_of_gyration(structure):
+
+    # Extract coordinates of all atoms
     atoms_coords = np.array([atom.coord for atom in structure.get_atoms()])
+
+    # Compute the center of mass
     center_of_mass = np.mean(atoms_coords, axis=0)
-    distances = distance.cdist(atoms_coords, [center_of_mass])
-    radius_of_gyration = np.sqrt(np.mean(distances**2))
+
+    # Compute the squared distances from the center of mass
+    squared_distances = np.sum((atoms_coords - center_of_mass) ** 2, axis=1)
+
+    # Calculate the radius of gyration
+    radius_of_gyration = np.sqrt(np.mean(squared_distances))
+
     return radius_of_gyration
 
 def calculate_sphericity(structure):
@@ -68,15 +68,26 @@ def calculate_surface_area_to_volume_ratio(structure):
     surface_area = hull.area
     return surface_area / volume
 
+
 def calculate_euler_characteristic(structure):
     atoms_coords = np.array([atom.coord for atom in structure.get_atoms()])
     hull = ConvexHull(atoms_coords)
+
     num_vertices = len(hull.vertices)
-    num_edges = len(hull.simplices) * 3
     num_faces = len(hull.simplices)
+
+    # Create a set to track unique edges
+    edges = set()
+    for simplex in hull.simplices:
+        for i in range(len(simplex)):
+            for j in range(i + 1, len(simplex)):
+                edge = tuple(sorted((simplex[i], simplex[j])))
+                edges.add(edge)
+
+    num_edges = len(edges)
+
     euler_characteristic = num_vertices - num_edges + num_faces
     return euler_characteristic
-
 def calculate_inradius(structure):
     atoms_coords = np.array([atom.coord for atom in structure.get_atoms()])
     hull = ConvexHull(atoms_coords)
@@ -173,3 +184,41 @@ def calculate_cubic_spline_rmse(structure):
     rmse = np.sqrt(mean_squared_error(sorted_coords[:, 1], interpolated_y))
 
     return rmse
+
+
+def calculate_average_plddt(structure):
+
+    plddt_scores = []
+
+    for atom in structure.get_atoms():
+        # The pLDDT score is stored in the B-factor column
+        plddt_scores.append(atom.bfactor)
+
+    if plddt_scores:
+        avg_plddt = np.mean(plddt_scores)
+    else:
+        avg_plddt = None  # Return None if no pLDDT scores were found
+
+    return avg_plddt
+
+
+def calculate_hurst_exponent(distances):
+    """Calculate the Hurst exponent using the Rescaled Range method."""
+    n = len(distances)
+    if n < 2:
+        return np.nan  # Not enough data
+
+    # Calculate the mean of the distances
+    mean_distance = np.mean(distances)
+    deviations = distances - mean_distance
+    cumulative_dev = np.cumsum(deviations)
+    R = np.max(cumulative_dev) - np.min(cumulative_dev)
+    S = np.std(distances)
+
+    if S == 0:
+        return np.nan  # Avoid division by zero
+
+    R_S = R / S
+    hurst_exponent = np.log(R_S) / np.log(n)
+
+    return hurst_exponent
